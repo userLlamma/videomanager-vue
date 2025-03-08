@@ -3,7 +3,7 @@ import axios from 'axios';
 import type { Material, TagInfo, Project, ProcessingResult } from '@/types';
 
 const apiClient = axios.create({
-  baseURL: '/api/v1',
+  baseURL: 'http://localhost:8000/api/v1',
   headers: {
     'Content-Type': 'application/json',
   },

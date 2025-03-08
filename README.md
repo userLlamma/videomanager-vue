@@ -1,4 +1,126 @@
-# 视频素材管理系统 - API 文档
+# 视频素材管理系统 - 前端
+
+这是视频素材管理系统的前端部分，基于 Vue 3 + TypeScript + Vite 构建。
+
+## 快速开始
+
+### 安装依赖
+
+```bash
+npm install
+# 或
+yarn
+```
+
+### 开发环境运行
+
+```bash
+npm run dev
+# 或
+yarn dev
+```
+
+### 构建生产版本
+
+```bash
+npm run build
+# 或
+yarn build
+```
+
+### 预览构建版本
+
+```bash
+npm run preview
+# 或
+yarn preview
+```
+
+## 配置后端 API
+
+默认情况下，前端应用会尝试连接到 `/api/v1` 路径下的 API。如果您的后端 API 位于不同位置，需要修改 API 路径配置。
+
+### 方法 1: 直接修改 API 地址
+
+打开 `src/api/index.ts` 文件，修改 `apiClient` 的 `baseURL`:
+
+```typescript
+const apiClient = axios.create({
+  baseURL: 'http://localhost:8000/api/v1',  // 修改为您的后端 API 地址
+  headers: {
+    'Content-Type': 'application/json',
+  },
+});
+```
+
+### 方法 2: 使用环境变量
+
+1. 在项目根目录创建 `.env.local` 文件：
+```
+VITE_API_BASE_URL=http://localhost:8000/api/v1
+```
+
+2. 修改 `src/api/index.ts` 文件中的 `apiClient` 创建:
+```typescript
+const apiClient = axios.create({
+  baseURL: import.meta.env.VITE_API_BASE_URL || '/api/v1',
+  headers: {
+    'Content-Type': 'application/json',
+  },
+});
+```
+
+### 方法 3: 设置开发代理解决跨域问题
+
+修改 `vite.config.ts` 文件，添加代理配置：
+
+```typescript
+export default defineConfig({
+  // ...其他配置
+  server: {
+    proxy: {
+      '/api': {
+        target: 'http://localhost:8000',
+        changeOrigin: true,
+      }
+    }
+  }
+});
+```
+
+## 主要功能
+
+- **素材库管理**: 浏览、搜索、筛选上传的视频素材
+- **标签系统**: 为素材添加分类标签，通过标签快速筛选
+- **项目管理**: 创建项目并组织相关素材
+- **视频上传**: 上传视频并自动提取关键帧
+
+## 目录结构
+
+```
+src/
+├── api/          # API 请求封装
+├── assets/       # 静态资源
+├── components/   # 公共组件
+├── stores/       # Pinia 状态管理
+├── types/        # TypeScript 类型定义
+├── views/        # 页面视图组件
+├── App.vue       # 根组件
+└── main.ts       # 应用入口
+```
+
+## 技术栈
+
+- **Vue 3**: 前端框架
+- **TypeScript**: 类型系统
+- **Vite**: 构建工具
+- **Vue Router**: 路由管理
+- **Pinia**: 状态管理
+- **Axios**: HTTP 请求
+
+----
+
+# 后端 API 文档
 
 ## 项目概述
 
