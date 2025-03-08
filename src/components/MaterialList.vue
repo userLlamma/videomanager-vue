@@ -92,6 +92,8 @@ const props = defineProps({
   }
 });
 
+const emit = defineEmits(['deleted']);
+
 const materialStore = useMaterialStore();
 const router = useRouter();
 const route = useRoute();
@@ -221,6 +223,10 @@ function handleMaterialUpdated(updatedMaterial: Material) {
 }
 
 function handleMaterialDeleted(materialId: number) {
+  // Emit deleted event to parent component
+  emit('deleted');
+  
+  // Remove the material locally too
   materialStore.deleteMaterial(materialId);
   selectedMaterial.value = null;
   

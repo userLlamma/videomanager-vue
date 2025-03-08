@@ -116,6 +116,8 @@ export const useMaterialStore = defineStore('material', () => {
       if (result) {
         // Remove from local cache
         materials.value = materials.value.filter(m => m.id !== id);
+        // Decrement total items count
+        totalItems.value = Math.max(0, totalItems.value - 1);
         return true;
       }
       return false;
