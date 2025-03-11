@@ -490,6 +490,40 @@ POST /processing/batch
 - `created_date`: 日期时间, 创建时间
 - `material_count`: 整数, 项目中的素材数量
 
+## 配置前端与后端 API 连接
+
+默认情况下，前端应用会尝试连接到 `/api/v1` 路径下的 API。由于浏览器的同源策略限制，在开发环境中需要配置代理来连接后端服务。
+
+### 开发环境的代理配置
+
+在开发环境中，需要在 `vite.config.ts` 文件中添加代理配置，以便正确连接到后端 API：
+
+```typescript
+// vite.config.ts
+export default defineConfig({
+  // ...其他配置
+  server: {
+    proxy: {
+      '/api': {
+        target: 'http://localhost:8000',  // 指向后端 API 服务的地址
+        changeOrigin: true,
+        secure: false,
+      }
+    }
+  }
+});
+```
+这个配置将所有以 /api 开头的请求代理到后端服务器，解决跨域问题。
+- 修改后端 API 地址:
+如果你的后端 API 运行在不同的地址，请相应地修改 target 值：
+
+### 生产环境配置
+在生产环境中，你可以选择以下方式之一：
+
+1. 配置前端应用的服务器（如 Nginx）将 /api 路径代理到后端服务
+2. 在后端服务中启用 CORS，允许前端应用的域名进行跨域请求
+3. 将前端和后端部署在同一个域名下，避免跨域问题
+
 ## 部署与配置
 
 ### 环境配置
