@@ -12,6 +12,26 @@
         :selectedTags="selectedTagIds" 
         @update:selectedTags="updateSelectedTags" 
       />
+      
+      <!-- 新增：多选相关操作 -->
+      <div v-if="materials.length > 0" class="selection-controls">
+        <label class="select-all-control">
+          <input 
+            type="checkbox" 
+            :checked="isAllSelected" 
+            :indeterminate="isSomeSelected && !isAllSelected"
+            @change="toggleSelectAll"
+          />
+          <span>全选</span>
+        </label>
+        <button 
+          v-if="selectedMaterials.length > 0"
+          @click="clearSelection"
+          class="clear-selection-button"
+        >
+          取消选择 ({{ selectedMaterials.length }})
+        </button>
+      </div>
     </div>
     
     <div v-if="loading && !materials.length" class="loading">
@@ -30,11 +50,19 @@
     
     <div v-else :class="['materials-grid', {'list-view': viewMode === 'list'}]">
       <div 
-        v-for="material in materials" 
+        v-for="(material, index) in materials" 
         :key="material.id" 
         :class="['material-card', {'selected': isSelected(material.id)}]"
-        @click="handleMaterialClick(material, $event)"
+        @click="handleMaterialClick(material, index, $event)"
       >
+        <div class="selection-checkbox">
+          <input 
+            type="checkbox" 
+            :checked="isSelected(material.id)" 
+            @click.stop="toggleSelection(material.id)"
+          />
+        </div>
+        
         <div class="selection-overlay" v-if="isSelected(material.id)">
           <div class="checkmark">✓</div>
         </div>
@@ -102,6 +130,16 @@ const searchQuery = ref('');
 const selectedMaterial = ref<Material | null>(null);
 const searchTimeout = ref<number | null>(null);
 const selectedMaterials = inject<Ref<number[]>>('selectedMaterials', ref([]));
+const lastSelectedIndex = ref<number | null>(null);
+
+// 新增：全选/部分选择状态
+const isAllSelected = computed(() => {
+  return materials.value.length > 0 && selectedMaterials.value.length === materials.value.length;
+});
+
+const isSomeSelected = computed(() => {
+  return selectedMaterials.value.length > 0 && selectedMaterials.value.length < materials.value.length;
+});
 
 // Mode flags
 const selectionMode = computed(() => selectedMaterials.value.length > 0);
@@ -145,22 +183,61 @@ function isSelected(materialId: number): boolean {
   return selectedMaterials.value.includes(materialId);
 }
 
-function handleMaterialClick(material: Material, event: MouseEvent) {
-  // Check if shift or ctrl key is pressed
-  const multiSelect = event.shiftKey || event.ctrlKey || event.metaKey;
-  
-  if (selectionMode.value || multiSelect) {
-    event.preventDefault();
-    
-    // Toggle selection
-    if (isSelected(material.id)) {
-      selectedMaterials.value = selectedMaterials.value.filter(id => id !== material.id);
-    } else {
-      selectedMaterials.value.push(material.id);
-    }
+function toggleSelection(materialId: number) {
+  if (isSelected(materialId)) {
+    selectedMaterials.value = selectedMaterials.value.filter(id => id !== materialId);
   } else {
+    selectedMaterials.value.push(materialId);
+  }
+}
+
+function handleMaterialClick(material: Material, index: number, event: MouseEvent) {
+  // Check if shift or ctrl key is pressed
+  const ctrlKey = event.ctrlKey || event.metaKey;
+  const shiftKey = event.shiftKey;
+  
+  if (ctrlKey) {
+    // Ctrl+Click: Toggle selection of this item
+    toggleSelection(material.id);
+    lastSelectedIndex.value = index;
+  } else if (shiftKey && lastSelectedIndex.value !== null) {
+    // Shift+Click: Select range from last selected to current
+    const start = Math.min(lastSelectedIndex.value, index);
+    const end = Math.max(lastSelectedIndex.value, index);
+    
+    // Add all materials in the range to selection
+    const newSelection = [...selectedMaterials.value];
+    for (let i = start; i <= end; i++) {
+      const id = materials.value[i].id;
+      if (!newSelection.includes(id)) {
+        newSelection.push(id);
+      }
+    }
+    selectedMaterials.value = newSelection;
+  } else if (selectionMode.value) {
+    // In selection mode: Regular click toggles selection
+    toggleSelection(material.id);
+    lastSelectedIndex.value = index;
+  } else {
+    // Regular click outside selection mode: Open material detail
     selectedMaterial.value = material;
   }
+}
+
+function toggleSelectAll() {
+  if (isAllSelected.value) {
+    // Deselect all
+    selectedMaterials.value = [];
+  } else {
+    // Select all
+    selectedMaterials.value = materials.value.map(m => m.id);
+  }
+  lastSelectedIndex.value = null;
+}
+
+function clearSelection() {
+  selectedMaterials.value = [];
+  lastSelectedIndex.value = null;
 }
 
 function getSourceName(path: string): string {
@@ -200,6 +277,10 @@ function updateFilters() {
       tags: materialStore.selectedTagIds.length ? materialStore.selectedTagIds : undefined
     }
   });
+  
+  // Clear selection when filters change
+  selectedMaterials.value = [];
+  lastSelectedIndex.value = null;
   
   // Fetch with new filters
   materialStore.fetchMaterials(searchQuery.value, materialStore.selectedTagIds, true);
@@ -247,6 +328,7 @@ function handleMaterialDeleted(materialId: number) {
   display: flex;
   flex-wrap: wrap;
   gap: 10px;
+  align-items: center;
 }
 
 .search-input {
@@ -255,6 +337,34 @@ function handleMaterialDeleted(materialId: number) {
   border-radius: 4px;
   flex-grow: 1;
   min-width: 200px;
+}
+
+/* 新增：选择控制样式 */
+.selection-controls {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-left: auto;
+}
+
+.select-all-control {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  cursor: pointer;
+}
+
+.clear-selection-button {
+  background-color: #f1f1f1;
+  border: none;
+  border-radius: 4px;
+  padding: 5px 10px;
+  cursor: pointer;
+  font-size: 0.9em;
+}
+
+.clear-selection-button:hover {
+  background-color: #e0e0e0;
 }
 
 .materials-grid {
@@ -305,13 +415,32 @@ function handleMaterialDeleted(materialId: number) {
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
 }
 
+/* 新增：选择框样式 */
+.selection-checkbox {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  z-index: 2;
+  background-color: rgba(255, 255, 255, 0.8);
+  width: 24px;
+  height: 24px;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.selection-checkbox input {
+  cursor: pointer;
+}
+
 .selection-overlay {
   position: absolute;
   top: 0;
   left: 0;
   right: 0;
   bottom: 0;
-  background-color: rgba(33, 150, 243, 0.3);
+  background-color: rgba(33, 150, 243, 0.2);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -321,12 +450,13 @@ function handleMaterialDeleted(materialId: number) {
 .checkmark {
   background-color: #2196f3;
   color: white;
-  width: 24px;
-  height: 24px;
+  width: 30px;
+  height: 30px;
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
+  font-size: 18px;
   font-weight: bold;
 }
 
